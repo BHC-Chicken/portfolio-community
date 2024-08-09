@@ -1,0 +1,26 @@
+server:
+  port: 80
+
+spring:
+  datasource:
+    driver-class-name: org.mariadb.jdbc.Driver
+    username: "${username}"
+    password: "${password}"
+    url: "${url}"
+  jpa:
+    open-in-view: false
+    defer-datasource-initialization: true
+    hibernate.ddl-auto: none
+    properties:
+      hibernate:
+        show_sql: false
+        use_sql_comments: true
+        format_sql: false
+    generate-ddl: true
+  elasticsearch:
+    username: "${spring.elasticsearch.username}"
+    password: "${spring.elasticsearch.password}"
+    uris: "${spring.elasticsearch.uris}"
+
+caPath: "${caPath}"
+
