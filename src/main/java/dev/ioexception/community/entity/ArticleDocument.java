@@ -12,9 +12,12 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ArticleDocument {
-    private Long id;
+    private Long articleId;
     private String title;
     private String content;
+    private String imageUrl;
+    private int view;
+    private int like;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime date;
 }

@@ -3,6 +3,7 @@ package dev.ioexception.community.controller;
 import dev.ioexception.community.dto.article.request.ArticleRequest;
 import dev.ioexception.community.dto.article.response.ArticleResponse;
 import dev.ioexception.community.service.ArticleService;
+import dev.ioexception.community.service.ArticleServiceES;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.List;
@@ -16,12 +17,15 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequiredArgsConstructor
 public class ArticleController {
     private final ArticleService articleService;
+    private final ArticleServiceES articleServiceES;
 
     @GetMapping("/list/{page}")
     public ResponseEntity<Page<ArticleResponse>> articleList(@PathVariable int page) {
@@ -31,25 +35,26 @@ public class ArticleController {
     }
 
     @PostMapping("/article")
-    public ResponseEntity<ArticleResponse> createArticle(@RequestBody ArticleRequest articleRequest)
+    public ResponseEntity<ArticleResponse> createArticle(@RequestPart(value = "article") ArticleRequest articleRequest, @RequestPart(value = "file", required = false) MultipartFile file)
             throws IOException {
-        ArticleResponse articleResponse = articleService.createArticle(articleRequest);
+        ArticleResponse articleResponse = articleService.createArticle(articleRequest, file);
 
         return ResponseEntity.ok(articleResponse);
     }
 
     @GetMapping("/{articleId}")
-    public ResponseEntity<ArticleResponse> getArticleDetail(@PathVariable Long articleId) {
+    public ResponseEntity<ArticleResponse> getArticleDetail(@PathVariable Long articleId) throws IOException {
         ArticleResponse articleResponse = articleService.getArticleDetail(articleId);
 
         return ResponseEntity.ok(articleResponse);
     }
 
     @PatchMapping("/{articleId}")
-    public ResponseEntity<ArticleResponse> modifyArticle(@PathVariable Long articleId,
-                                                         @RequestBody ArticleRequest articleRequest)
+    public ResponseEntity<ArticleResponse> modifyArticle(@PathVariable Long articleId, @RequestBody ArticleRequest articleRequest, @RequestParam(value = "file", required = false)
+                                                         MultipartFile file)
             throws IOException {
-        ArticleResponse articleResponse = articleService.modifyArticle(articleId, articleRequest);
+
+        ArticleResponse articleResponse = articleService.modifyArticle(articleId, articleRequest, file);
 
         return ResponseEntity.ok(articleResponse);
     }
@@ -64,7 +69,7 @@ public class ArticleController {
     @GetMapping("/search")
     public ResponseEntity<List<ArticleResponse>> searchArticle(@RequestParam("c") String c, @RequestParam("q") String q, HttpSession session)
             throws IOException {
-        List<ArticleResponse> list = articleService.searchArticle(c, q, session);
+        List<ArticleResponse> list = articleServiceES.searchArticle(c, q, session);
 
         return ResponseEntity.ok(list);
     }
