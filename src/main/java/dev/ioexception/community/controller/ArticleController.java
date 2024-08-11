@@ -42,14 +42,14 @@ public class ArticleController {
         return ResponseEntity.ok(articleResponse);
     }
 
-    @GetMapping("/{articleId}")
+    @GetMapping("/article/{articleId}")
     public ResponseEntity<ArticleResponse> getArticleDetail(@PathVariable Long articleId) throws IOException {
         ArticleResponse articleResponse = articleService.getArticleDetail(articleId);
 
         return ResponseEntity.ok(articleResponse);
     }
 
-    @PatchMapping("/{articleId}")
+    @PatchMapping("/article/{articleId}")
     public ResponseEntity<ArticleResponse> modifyArticle(@PathVariable Long articleId, @RequestBody ArticleRequest articleRequest, @RequestParam(value = "file", required = false)
                                                          MultipartFile file)
             throws IOException {
@@ -59,7 +59,7 @@ public class ArticleController {
         return ResponseEntity.ok(articleResponse);
     }
 
-    @DeleteMapping("/{articleId}")
+    @DeleteMapping("/article/{articleId}")
     public ResponseEntity<Void> deleteArticle(@PathVariable Long articleId) throws IOException {
         articleService.deleteArticle(articleId);
 

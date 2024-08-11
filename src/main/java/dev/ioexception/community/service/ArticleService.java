@@ -120,8 +120,8 @@ public class ArticleService {
         }
 
         Article deleteArticle = article.get();
-        deleteArticle.markAsDeleted();
 
+        deleteArticle.markAsDeleted();
         articleServiceES.deleteQuery(deleteArticle);
     }
 
@@ -134,6 +134,7 @@ public class ArticleService {
         }
 
         Article likeArticle = article.get();
+
         likeArticle.incrementLike();
         articleServiceES.incrementLikeQuery(likeArticle);
     }
@@ -147,6 +148,7 @@ public class ArticleService {
         }
 
         Article likeArticle = article.get();
+
         likeArticle.decrementLike();
         articleServiceES.decrementLikeQuery(likeArticle);
     }
