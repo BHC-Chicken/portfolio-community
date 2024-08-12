@@ -16,6 +16,7 @@ public class ArticleDocument {
     private String title;
     private String content;
     private String imageUrl;
+    private String email;
     private int view;
     private int like;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")

@@ -1,12 +1,13 @@
 package dev.ioexception.community.service;
 
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import dev.ioexception.community.dto.article.request.ArticleRequest;
 import dev.ioexception.community.dto.article.response.ArticleResponse;
 import dev.ioexception.community.entity.Article;
+import dev.ioexception.community.entity.User;
 import dev.ioexception.community.mapper.ArticleMapper;
 import dev.ioexception.community.repository.ArticleRepository;
-import dev.ioexception.community.util.UploadImage;
+import dev.ioexception.community.repository.UserRepository;
+import dev.ioexception.community.util.AWSS3Bucket;
 import java.io.IOException;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -24,30 +25,24 @@ public class ArticleService {
     private final int MAX_TITLE_LENGTH = 1000;
     private final int MAX_CONTENT_LENGTH = 2000;
 
-    private final UploadImage uploadImage;
+    private final AWSS3Bucket awsS3Bucket;
     private final ArticleServiceES articleServiceES;
+
+    private final UserRepository userRepository;
     private final ArticleRepository articleRepository;
 
     @Transactional
     public ArticleResponse createArticle(ArticleRequest articleRequest, MultipartFile file) throws IOException {
-        if (articleRequest.title().isBlank() || articleRequest.title().length() > MAX_TITLE_LENGTH) {
-            throw new IllegalArgumentException("title maximum length exceeded");
-        }
+        validateArticleRequest(articleRequest);
 
-        if (articleRequest.content().isBlank() || articleRequest.content().length() > MAX_CONTENT_LENGTH) {
-            throw new IllegalArgumentException("content maximum length exceeded");
-        }
+        User user = findUserById(articleRequest.userId());
 
         Article article = ArticleMapper.INSTANCE.articleRequestToArticle(articleRequest);
 
-        if (file == null || file.isEmpty()) {
-            article.setImageUrl("no image");
-        } else {
-            article.setImageUrl(uploadImage.uploadS3(file));
-        }
+        article.setUser(user);
+        article.setImageUrl(handleFileUpload(file));
 
         Article savedArticle = articleRepository.save(article);
-
         articleServiceES.indexQuery(savedArticle);
 
         return ArticleMapper.INSTANCE.articleToArticleResponse(savedArticle);
@@ -78,51 +73,34 @@ public class ArticleService {
     }
 
     @Transactional
-    public ArticleResponse modifyArticle(Long articleId, ArticleRequest articleRequest, MultipartFile file)
-            throws IOException {
-        Optional<Article> article = articleRepository.findById(articleId);
+    public ArticleResponse modifyArticle(Long articleId, ArticleRequest articleRequest, MultipartFile file) throws IOException {
+        validateArticleRequest(articleRequest);
 
-        if (article.isEmpty()) {
-            throw new IllegalArgumentException("wrong articleId");
-        }
+        Article article = findArticleById(articleId);
+        User user = findUserById(articleRequest.userId());
 
-        if (articleRequest.title().isBlank() || articleRequest.title().length() > MAX_TITLE_LENGTH) {
-            throw new IllegalArgumentException("title maximum length exceeded");
-        }
+        validateUserOwnership(article, user);
 
-        if (articleRequest.content().isBlank() || articleRequest.content().length() > MAX_CONTENT_LENGTH) {
-            throw new IllegalArgumentException("content maximum length exceeded");
-        }
+        article.changeTitle(articleRequest.title());
+        article.changeContent(articleRequest.content());
+        article.modifyDate();
+        article.setImageUrl(handleFileUpload(file));
 
-        Article oldArticle = article.get();
+        articleServiceES.updateQuery(article);
 
-        oldArticle.changeTitle(articleRequest.title());
-        oldArticle.changeContent(articleRequest.content());
-        oldArticle.modifyDate();
-
-        if (file.isEmpty()) {
-            oldArticle.setImageUrl("no image");
-        } else {
-            oldArticle.setImageUrl(uploadImage.uploadS3(file));
-        }
-
-        articleServiceES.updateQuery(oldArticle);
-
-        return ArticleMapper.INSTANCE.articleToArticleResponse(article.get());
+        return ArticleMapper.INSTANCE.articleToArticleResponse(article);
     }
 
     @Transactional
-    public void deleteArticle(Long articleId) throws IOException {
-        Optional<Article> article = articleRepository.findById(articleId);
+    public void deleteArticle(Long articleId, Long userId) throws IOException {
+        Article article = findArticleById(articleId);
+        User user = findUserById(userId);
 
-        if (article.isEmpty()) {
-            throw new IllegalArgumentException("wrong articleId");
-        }
+        validateUserOwnership(article, user);
+        awsS3Bucket.deleteImage(article.getImageUrl());
 
-        Article deleteArticle = article.get();
-
-        deleteArticle.markAsDeleted();
-        articleServiceES.deleteQuery(deleteArticle);
+        article.markAsDeleted();
+        articleServiceES.deleteQuery(article);
     }
 
     @Transactional
@@ -152,4 +130,38 @@ public class ArticleService {
         likeArticle.decrementLike();
         articleServiceES.decrementLikeQuery(likeArticle);
     }
+
+    private void validateArticleRequest(ArticleRequest articleRequest) {
+        if (articleRequest.title().isBlank() || articleRequest.title().length() > MAX_TITLE_LENGTH) {
+            throw new IllegalArgumentException("Title maximum length exceeded");
+        }
+
+        if (articleRequest.content().isBlank() || articleRequest.content().length() > MAX_CONTENT_LENGTH) {
+            throw new IllegalArgumentException("Content maximum length exceeded");
+        }
+    }
+
+    private User findUserById(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    }
+
+    private Article findArticleById(Long articleId) {
+        return articleRepository.findById(articleId)
+                .orElseThrow(() -> new IllegalArgumentException("Article not found"));
+    }
+
+    private void validateUserOwnership(Article article, User user) {
+        if (!article.getUser().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("User does not match the article owner");
+        }
+    }
+
+    private String handleFileUpload(MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            return "no image";
+        }
+        return awsS3Bucket.uploadS3(file);
+    }
 }
+
