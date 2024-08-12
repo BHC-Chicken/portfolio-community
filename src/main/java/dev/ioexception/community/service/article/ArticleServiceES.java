@@ -1,4 +1,4 @@
-package dev.ioexception.community.service;
+package dev.ioexception.community.service.article;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.FieldValue;

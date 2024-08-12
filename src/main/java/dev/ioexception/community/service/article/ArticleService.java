@@ -1,4 +1,4 @@
-package dev.ioexception.community.service;
+package dev.ioexception.community.service.article;
 
 import dev.ioexception.community.dto.article.request.ArticleRequest;
 import dev.ioexception.community.dto.article.response.ArticleResponse;
