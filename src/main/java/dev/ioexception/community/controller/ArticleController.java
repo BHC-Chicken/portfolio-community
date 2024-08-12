@@ -1,5 +1,6 @@
 package dev.ioexception.community.controller;
 
+import dev.ioexception.community.dto.article.request.ArticleDeleteRequest;
 import dev.ioexception.community.dto.article.request.ArticleRequest;
 import dev.ioexception.community.dto.article.response.ArticleResponse;
 import dev.ioexception.community.service.ArticleService;
@@ -35,7 +36,8 @@ public class ArticleController {
     }
 
     @PostMapping("/article")
-    public ResponseEntity<ArticleResponse> createArticle(@RequestPart(value = "article") ArticleRequest articleRequest, @RequestPart(value = "file", required = false) MultipartFile file)
+    public ResponseEntity<ArticleResponse> createArticle(@RequestPart(value = "article") ArticleRequest articleRequest,
+                                                         @RequestPart(value = "file", required = false) MultipartFile file)
             throws IOException {
         ArticleResponse articleResponse = articleService.createArticle(articleRequest, file);
 
@@ -50,7 +52,9 @@ public class ArticleController {
     }
 
     @PatchMapping("/article/{articleId}")
-    public ResponseEntity<ArticleResponse> modifyArticle(@PathVariable Long articleId, @RequestBody ArticleRequest articleRequest, @RequestParam(value = "file", required = false)
+    public ResponseEntity<ArticleResponse> modifyArticle(@PathVariable Long articleId,
+                                                         @RequestPart("article") ArticleRequest articleRequest,
+                                                         @RequestPart(value = "file", required = false)
                                                          MultipartFile file)
             throws IOException {
 
@@ -60,14 +64,17 @@ public class ArticleController {
     }
 
     @DeleteMapping("/article/{articleId}")
-    public ResponseEntity<Void> deleteArticle(@PathVariable Long articleId) throws IOException {
-        articleService.deleteArticle(articleId);
+    public ResponseEntity<Void> deleteArticle(@PathVariable Long articleId,
+                                              @RequestBody ArticleDeleteRequest articleDeleteRequest)
+            throws IOException {
+        articleService.deleteArticle(articleId, articleDeleteRequest.userId());
 
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<ArticleResponse>> searchArticle(@RequestParam("c") String c, @RequestParam("q") String q, HttpSession session)
+    public ResponseEntity<List<ArticleResponse>> searchArticle(@RequestParam("c") String c, @RequestParam("q") String q,
+                                                               HttpSession session)
             throws IOException {
         List<ArticleResponse> list = articleServiceES.searchArticle(c, q, session);
 
