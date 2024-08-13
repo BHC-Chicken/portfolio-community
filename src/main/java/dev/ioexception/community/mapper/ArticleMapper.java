@@ -14,6 +14,7 @@ public interface ArticleMapper {
 
     @Mapping(target = "date", expression = "java(java.time.LocalDateTime.now())")
     Article articleRequestToArticle(ArticleRequest articleRequest);
+    @Mapping(source = "user.email", target = "email")
     ArticleResponse articleToArticleResponse(Article article);
     @Mapping(source = "user.email", target = "email")
     @Mapping(source = "id", target = "articleId")

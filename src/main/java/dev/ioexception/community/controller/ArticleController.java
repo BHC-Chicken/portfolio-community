@@ -6,6 +6,7 @@ import dev.ioexception.community.dto.article.response.ArticleResponse;
 import dev.ioexception.community.service.article.ArticleService;
 import dev.ioexception.community.service.article.ArticleServiceES;
 import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +37,7 @@ public class ArticleController {
     }
 
     @PostMapping("/article")
-    public ResponseEntity<ArticleResponse> createArticle(@RequestPart(value = "article") ArticleRequest articleRequest,
+    public ResponseEntity<ArticleResponse> createArticle(@Valid @RequestPart(value = "article") ArticleRequest articleRequest,
                                                          @RequestPart(value = "file", required = false) MultipartFile file)
             throws IOException {
         ArticleResponse articleResponse = articleService.createArticle(articleRequest, file);
@@ -53,7 +54,7 @@ public class ArticleController {
 
     @PatchMapping("/article/{articleId}")
     public ResponseEntity<ArticleResponse> modifyArticle(@PathVariable Long articleId,
-                                                         @RequestPart("article") ArticleRequest articleRequest,
+                                                         @Valid @RequestPart("article") ArticleRequest articleRequest,
                                                          @RequestPart(value = "file", required = false)
                                                          MultipartFile file)
             throws IOException {
@@ -65,7 +66,7 @@ public class ArticleController {
 
     @DeleteMapping("/article/{articleId}")
     public ResponseEntity<Void> deleteArticle(@PathVariable Long articleId,
-                                              @RequestBody ArticleDeleteRequest articleDeleteRequest)
+                                              @Valid @RequestBody ArticleDeleteRequest articleDeleteRequest)
             throws IOException {
         articleService.deleteArticle(articleId, articleDeleteRequest.userId());
 
