@@ -22,8 +22,6 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class ArticleService {
     private final int PAGE_SIZE = 10;
-    private final int MAX_TITLE_LENGTH = 1000;
-    private final int MAX_CONTENT_LENGTH = 2000;
 
     private final AWSS3Bucket awsS3Bucket;
     private final ArticleServiceES articleServiceES;
@@ -33,10 +31,7 @@ public class ArticleService {
 
     @Transactional
     public ArticleResponse createArticle(ArticleRequest articleRequest, MultipartFile file) throws IOException {
-        validateArticleRequest(articleRequest);
-
         User user = findUserById(articleRequest.userId());
-
         Article article = ArticleMapper.INSTANCE.articleRequestToArticle(articleRequest);
 
         article.setUser(user);
@@ -52,11 +47,7 @@ public class ArticleService {
     public ArticleResponse getArticleDetail(Long articleId) throws IOException {
         Optional<Article> article = articleRepository.findById(articleId);
 
-        if (article.isEmpty()) {
-            throw new IllegalArgumentException("wrong articleId");
-        }
-
-        Article getArticle = article.get();
+        Article getArticle = article.orElseThrow(() -> new IllegalArgumentException("wrong articleId"));
 
         getArticle.incrementView();
         articleServiceES.incrementViewQuery(getArticle);
@@ -67,19 +58,17 @@ public class ArticleService {
     public Page<ArticleResponse> getArticleList(int page) {
         PageRequest pageRequest = PageRequest.of(page - 1, PAGE_SIZE, Sort.by("date").descending());
 
-        Page<Article> articleList = articleRepository.findAllByDeleteFlag(pageRequest,false);
+        Page<Article> articleList = articleRepository.findAllByDeleteFlag(pageRequest, false);
 
         return articleList.map(ArticleMapper.INSTANCE::articleToArticleResponse);
     }
 
     @Transactional
-    public ArticleResponse modifyArticle(Long articleId, ArticleRequest articleRequest, MultipartFile file) throws IOException {
-        validateArticleRequest(articleRequest);
-
+    public ArticleResponse modifyArticle(Long articleId, ArticleRequest articleRequest, MultipartFile file)
+            throws IOException {
         Article article = findArticleById(articleId);
-        User user = findUserById(articleRequest.userId());
 
-        validateUserOwnership(article, user);
+        validateUserOwnership(article.getUser().getId(), articleRequest.userId());
 
         article.changeTitle(articleRequest.title());
         article.changeContent(articleRequest.content());
@@ -94,9 +83,8 @@ public class ArticleService {
     @Transactional
     public void deleteArticle(Long articleId, Long userId) throws IOException {
         Article article = findArticleById(articleId);
-        User user = findUserById(userId);
 
-        validateUserOwnership(article, user);
+        validateUserOwnership(article.getUser().getId(), userId);
         awsS3Bucket.deleteImage(article.getImageUrl());
 
         article.markAsDeleted();
@@ -131,16 +119,6 @@ public class ArticleService {
         articleServiceES.decrementLikeQuery(likeArticle);
     }
 
-    private void validateArticleRequest(ArticleRequest articleRequest) {
-        if (articleRequest.title().isBlank() || articleRequest.title().length() > MAX_TITLE_LENGTH) {
-            throw new IllegalArgumentException("Title maximum length exceeded");
-        }
-
-        if (articleRequest.content().isBlank() || articleRequest.content().length() > MAX_CONTENT_LENGTH) {
-            throw new IllegalArgumentException("Content maximum length exceeded");
-        }
-    }
-
     private User findUserById(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
@@ -151,8 +129,8 @@ public class ArticleService {
                 .orElseThrow(() -> new IllegalArgumentException("Article not found"));
     }
 
-    private void validateUserOwnership(Article article, User user) {
-        if (!article.getUser().getId().equals(user.getId())) {
+    private void validateUserOwnership(Long articleId, Long userId) {
+        if (!articleId.equals(userId)) {
             throw new IllegalArgumentException("User does not match the article owner");
         }
     }

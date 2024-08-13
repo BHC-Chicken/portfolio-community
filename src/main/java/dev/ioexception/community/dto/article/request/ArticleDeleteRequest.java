@@ -1,5 +1,7 @@
 package dev.ioexception.community.dto.article.request;
 
-public record ArticleDeleteRequest(Long userId) {
+import jakarta.validation.constraints.NotNull;
+
+public record ArticleDeleteRequest(@NotNull Long userId) {
 
 }
