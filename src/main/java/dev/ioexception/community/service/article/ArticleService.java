@@ -9,6 +9,8 @@ import dev.ioexception.community.repository.ArticleRepository;
 import dev.ioexception.community.repository.UserRepository;
 import dev.ioexception.community.util.AWSS3Bucket;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -67,6 +69,10 @@ public class ArticleService {
     public ArticleResponse modifyArticle(Long articleId, ArticleRequest articleRequest, MultipartFile file)
             throws IOException {
         Article article = findArticleById(articleId);
+
+        if (isModifyArticle(article)) {
+            throw new IllegalArgumentException("Modifiable timeout");
+        }
 
         validateUserOwnership(article.getUser().getId(), articleRequest.userId());
 
@@ -140,6 +146,12 @@ public class ArticleService {
             return "no image";
         }
         return awsS3Bucket.uploadS3(file);
+    }
+
+    private boolean isModifyArticle(Article article) {
+        LocalDateTime createdDate = article.getDate().plusDays(10);
+
+        return createdDate.isBefore(LocalDateTime.now());
     }
 }
 
