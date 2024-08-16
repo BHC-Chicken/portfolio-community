@@ -4,6 +4,11 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.InlineScript;
 import co.elastic.clients.elasticsearch._types.SortOrder;
+import co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
+import co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
+import co.elastic.clients.elasticsearch._types.aggregations.StringTermsAggregate;
+import co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
+import co.elastic.clients.elasticsearch._types.aggregations.TermsAggregation;
 import co.elastic.clients.elasticsearch.core.DeleteRequest;
 import co.elastic.clients.elasticsearch.core.IndexRequest;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
@@ -11,12 +16,14 @@ import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.UpdateRequest;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.json.JsonData;
+import co.elastic.clients.util.NamedValue;
 import dev.ioexception.community.dto.article.response.ArticleResponse;
 import dev.ioexception.community.entity.Article;
 import dev.ioexception.community.entity.ArticleDocument;
 import dev.ioexception.community.mapper.ArticleMapper;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import java.security.PublicKey;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -140,6 +147,29 @@ public class ArticleServiceES {
                 .routing(localDateTimeFormatter(article.getDate())));
 
         client.delete(delete);
+    }
+
+    public String Top10Keyword() throws IOException {
+        SearchRequest searchRequest = SearchRequest.of(s -> s
+                .index(".ds-spring-boot-metrics*")
+                .size(0)
+                .aggregations("top10-keyword", Aggregation.of(a -> a
+                        .terms(t -> t
+                                .field("query_question")
+                                .size(10)
+                                .order(NamedValue.of("_count", SortOrder.Desc))
+                        ))));
+
+        SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+        StringBuilder sb = new StringBuilder();
+
+        int index = 1;
+
+        for (StringTermsBucket s : response.aggregations().get("top10-keyword").sterms().buckets().array()) {
+            sb.append(index++).append(" : ").append(s.key()._get()).append("\n");
+        }
+
+        return sb.toString();
     }
 
     private SearchRequest searchRequestInit(String category, String keyword) {

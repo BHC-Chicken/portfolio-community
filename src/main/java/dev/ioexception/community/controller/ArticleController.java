@@ -81,4 +81,11 @@ public class ArticleController {
 
         return ResponseEntity.ok(list);
     }
+
+    @GetMapping("/realtime")
+    public ResponseEntity<String> getRealTimeKeyword() throws IOException {
+        String s = articleServiceES.Top10Keyword();
+
+        return ResponseEntity.ok(s);
+    }
 }
