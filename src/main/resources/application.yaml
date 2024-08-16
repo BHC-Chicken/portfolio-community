@@ -39,3 +39,21 @@ cloud:
       static: ap-northeast-2
     stack:
       auto: false
+
+logging:
+  level:
+    org:
+      elasticsearch:
+        client: debug
+      springframework:
+        data:
+          elasticsearch:
+            client: debug
+      hibernate:
+        type:
+          descriptor:
+            sql: trace
+    root: info
+    dev.ioexception: info
+  file:
+    name: "${log.file.name}"
