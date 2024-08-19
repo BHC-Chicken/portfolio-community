@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -41,11 +42,9 @@ public class LoginSuccessHandler implements AuthenticationSuccessHandler {
     }
 
     private String buildWarningMessage(List<ModifyWarning> modifyWarnings) {
-        StringBuilder messageBuilder = new StringBuilder();
-        for (ModifyWarning warning : modifyWarnings) {
-            messageBuilder.append(warning.getArticle().getTitle()).append("\n");
-        }
-        messageBuilder.append(WARNING_MESSAGE);
-        return messageBuilder.toString();
+        
+        return modifyWarnings.stream()
+                .map(warning -> warning.getArticle().getTitle())
+                .collect(Collectors.joining("\n")) + "\n" + WARNING_MESSAGE;
     }
 }
