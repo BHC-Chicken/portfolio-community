@@ -9,7 +9,9 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.Cache;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,6 +36,13 @@ public class ArticleController {
         Page<ArticleResponse> list = articleService.getArticleList(page);
 
         return ResponseEntity.ok(list);
+    }
+
+    @GetMapping("/topKeyword")
+    public ResponseEntity<Map<Integer, String>> topKeyword() {
+        Map<Integer, String> cachedKeywords = articleService.getTopKeywordCache();
+
+        return ResponseEntity.ok(cachedKeywords);
     }
 
     @PostMapping("/article")
@@ -80,12 +89,5 @@ public class ArticleController {
         List<ArticleResponse> list = articleServiceES.searchArticle(c, q, session);
 
         return ResponseEntity.ok(list);
-    }
-
-    @GetMapping("/realtime")
-    public ResponseEntity<String> getRealTimeKeyword() throws IOException {
-        String s = articleServiceES.Top10Keyword();
-
-        return ResponseEntity.ok(s);
     }
 }

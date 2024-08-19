@@ -11,11 +11,17 @@ import dev.ioexception.community.util.AWSS3Bucket;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -27,7 +33,9 @@ public class ArticleService {
 
     private final AWSS3Bucket awsS3Bucket;
     private final ArticleServiceES articleServiceES;
+    private final SimpMessagingTemplate messagingTemplate;
 
+    private final CacheManager cacheManager;
     private final UserRepository userRepository;
     private final ArticleRepository articleRepository;
 
@@ -123,6 +131,27 @@ public class ArticleService {
 
         likeArticle.decrementLike();
         articleServiceES.decrementLikeQuery(likeArticle);
+    }
+
+    @Scheduled(fixedDelay = 5000)
+    public void broadcastTopKeywords() {
+        Map<Integer, String> cachedKeywords = getTopKeywordCache();
+
+        if (cachedKeywords != null) {
+            messagingTemplate.convertAndSend("/pub/topKeyword", cachedKeywords);
+        }
+    }
+
+    public Map<Integer, String> getTopKeywordCache() {
+        Cache cache = cacheManager.getCache("topKeywords");
+
+        if (cache == null) {
+            throw new IllegalArgumentException("not found top keyword");
+        }
+
+        Cache.ValueWrapper valueWrapper = cache.get("top10");
+
+        return (Map<Integer, String>) valueWrapper.get();
     }
 
     private User findUserById(Long userId) {

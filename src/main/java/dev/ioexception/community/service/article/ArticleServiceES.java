@@ -32,12 +32,18 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 public class ArticleServiceES {
     private final int PAGE_SIZE = 10;
+
+    private final CacheManager cacheManager;
     private final ElasticsearchClient client;
 
     public List<ArticleResponse> searchArticle(String category, String keyword, HttpSession session)
@@ -149,27 +155,16 @@ public class ArticleServiceES {
         client.delete(delete);
     }
 
-    public String Top10Keyword() throws IOException {
-        SearchRequest searchRequest = SearchRequest.of(s -> s
-                .index(".ds-spring-boot-metrics*")
-                .size(0)
-                .aggregations("top10-keyword", Aggregation.of(a -> a
-                        .terms(t -> t
-                                .field("query_question")
-                                .size(10)
-                                .order(NamedValue.of("_count", SortOrder.Desc))
-                        ))));
+    @Scheduled(fixedRate = 5000)
+    public void Top10Keyword() throws IOException {
+        Map<Integer, String> searchKeyword = aggTop10Keyword();
 
-        SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
-        StringBuilder sb = new StringBuilder();
+        Cache cache = cacheManager.getCache("topKeyword");
 
-        int index = 1;
-
-        for (StringTermsBucket s : response.aggregations().get("top10-keyword").sterms().buckets().array()) {
-            sb.append(index++).append(" : ").append(s.key()._get()).append("\n");
+        if (cache != null) {
+            cache.evictIfPresent("top10");
+            cache.put("top10", searchKeyword);
         }
-
-        return sb.toString();
     }
 
     private SearchRequest searchRequestInit(String category, String keyword) {
@@ -212,6 +207,29 @@ public class ArticleServiceES {
                         .field(f -> f.field("date").order(SortOrder.Desc))));
     }
 
+    private Map<Integer, String> aggTop10Keyword() throws IOException {
+        SearchRequest searchRequest = SearchRequest.of(s -> s
+                .index(".ds-spring-boot-metrics*")
+                .size(0)
+                .aggregations("top10-keyword", Aggregation.of(a -> a
+                        .terms(t -> t
+                                .field("query_question")
+                                .size(10)
+                                .order(NamedValue.of("_count", SortOrder.Desc))
+                        ))));
+
+        SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+        Map<Integer, String> searchKeyword = new HashMap<>();
+
+        int index = 1;
+
+        for (StringTermsBucket s : response.aggregations().get("top10-keyword").sterms().buckets().array()) {
+            searchKeyword.put(index++, s.key()._get().toString());
+        }
+
+        return searchKeyword;
+    }
+
     private List<FieldValue> getSearchAfterFromSession(HttpSession session) {
         Object sessionAttr = session.getAttribute("searchAfter");
 
@@ -224,9 +242,11 @@ public class ArticleServiceES {
 
     private List<FieldValue> getLastHitSortValues(SearchResponse<ArticleDocument> searchResponse) {
         List<Hit<ArticleDocument>> hits = searchResponse.hits().hits();
+
         if (hits.isEmpty()) {
             return null;
         }
+
         return hits.get(hits.size() - 1).sort();
     }
 
